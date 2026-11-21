@@ -1,0 +1,143 @@
+### Batloung Farm API examples (VS Code "REST Client" / Thunder Client / IntelliJ HTTP client)
+@host = http://localhost:3000/api
+
+### 1. Login (copy the token into @token below)
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "Batloung@2026" }
+
+###
+@token = PASTE_TOKEN_HERE
+
+### Health (no token needed)
+GET {{host}}/health
+
+### Suppliers
+GET {{host}}/suppliers?search=fruit&province=Gauteng&page=1&limit=10
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "business_name": "Sunny Valley Farms", "contact_person": "Lerato Mokoena", "phone": "+27 12 555 0199", "province": "Mpumalanga", "address": "12 Citrus Road, Nelspruit" }
+
+### Delete a supplier that has purchases -> 409 (business constraint)
+DELETE {{host}}/suppliers/1
+Authorization: Bearer {{token}}
+
+### Fruits and stock
+GET {{host}}/fruits/available
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/stock?fruit_id=1
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/stock/low
+Authorization: Bearer {{token}}
+
+### Vendors: search by name OR phone
+GET {{host}}/vendors?search=5801
+Authorization: Bearer {{token}}
+
+### Purchase with several items, delivery verification and automatic total
+POST {{host}}/purchases
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "supplier_id": 1, "expected_delivery_date": "2026-11-16", "items": [
+  { "fruit_id": 1, "packaging_size": "LARGE", "unit_cost": 150, "quantity_ordered": 100, "quantity_delivered": 100, "quantity_rejected": 5, "rejection_reason": "Bruised" },
+  { "fruit_id": 5, "packaging_size": "SMALL", "unit_cost": 85, "quantity": 40 } ] }
+
+### Sale with several items (cash). Prices come from the price list, total is calculated automatically
+POST {{host}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "vendor_id": 1, "payment_method": "CASH", "items": [
+  { "fruit_id": 1, "packaging_size": "MEDIUM", "quantity": 2 },
+  { "fruit_id": 5, "packaging_size": "LARGE", "quantity": 3 } ] }
+
+### REJECTED sale: too many mangoes (LARGE) - whole sale rolled back, stock unchanged
+POST {{host}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "vendor_id": 1, "payment_method": "CASH", "items": [
+  { "fruit_id": 1, "packaging_size": "SMALL", "quantity": 1 },
+  { "fruit_id": 4, "packaging_size": "LARGE", "quantity": 500 } ] }
+
+### Credit sale that exceeds the vendor's credit limit (vendor 8 limit = M1,500) -> 400 CREDIT_LIMIT_EXCEEDED
+POST {{host}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "vendor_id": 8, "payment_method": "CREDIT", "items": [ { "fruit_id": 5, "packaging_size": "LARGE", "quantity": 10 } ] }
+
+### Add a second payment to an invoice
+POST {{host}}/sales/2/payments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "amount": 500, "payment_method": "MOBILE_MONEY", "reference_number": "MM-12345" }
+
+### Invoice (JSON) and PDF
+GET {{host}}/sales/2/invoice
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/sales/2/invoice.pdf?download=1&token={{token}}
+
+### Return 2 damaged boxes (sales_detail_id 4 belongs to sale 2); restock=false because they are damaged
+POST {{host}}/returns
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sale_id": 2, "refund_method": "CASH", "items": [ { "sales_detail_id": 4, "quantity": 2, "reason": "Damaged boxes", "restock": false } ] }
+
+### Stock adjustment (damaged fruit)
+POST {{host}}/stock/adjustments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "fruit_id": 2, "packaging_size": "SMALL", "movement_type": "DAMAGED", "quantity": 4, "reason": "Crushed in transit" }
+
+### Required SQL reports as API calls
+GET {{host}}/reports/top-fruits?limit=5
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/reports/revenue?from=2026-01-01&to=2026-12-31
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/reports/top-vendor
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/reports/stock-levels
+Authorization: Bearer {{token}}
+
+### Profit by fruit (group_by = summary | fruit | packaging | fruit_packaging | sale)
+GET {{host}}/reports/profit?group_by=fruit&period=month
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/reports/sales-trend?granularity=day&period=month
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/reports/fruit-demand?period=month
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/payments/overdue
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/vendors/3/statement?period=month
+Authorization: Bearer {{token}}
